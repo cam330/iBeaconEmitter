@@ -18,12 +18,20 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
     let uuid = NSUUID(uuidString:"5122CBA8-9020-40B5-A252-AC84F6041A02")
     var beaconRegion: CLBeaconRegion!
     var isBroadcasting = false
-    var latBluetoothPeripheralManager: CBPeripheralManager!
+    var bluetoothPeripheralManager: CBPeripheralManager!
     var dataDictionary = NSDictionary()
     var longitude = CLLocationDegrees()
     var latitude = CLLocationDegrees()
     var currentLng = CLLocationDegrees()
     var currentLat = CLLocationDegrees()
+
+    var secDataDictionary = NSDictionary()
+    var secBeaconRegion : CLBeaconRegion!
+    var secBluetoothPerhipheralManager: CBPeripheralManager!
+    let secondUuid = NSUUID(uuidString:"FEE8B592-C1B2-4DEC-B210-0DC8C38C36F5")
+    var secIsBroadcasting = false
+    
+    var advertisingFirst = true
     
     @IBOutlet var startButton: UIButton!
     
@@ -36,7 +44,9 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
         
         UIApplication.shared.isIdleTimerDisabled = true
         
-        latBluetoothPeripheralManager = CBPeripheralManager(delegate: self, queue: nil, options: nil)
+        bluetoothPeripheralManager = CBPeripheralManager(delegate: self, queue: nil, options: nil)
+        secBluetoothPerhipheralManager = CBPeripheralManager(delegate: self, queue: nil, options: nil)
+        
         
         locationManager.delegate = self
         if CLLocationManager.authorizationStatus() != CLAuthorizationStatus.authorizedWhenInUse {
@@ -69,37 +79,57 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
         startButton.layer.addSublayer(gradient)
         
     }
+    
+    @IBAction func startAdvertising(_ sender: AnyObject) {
+        UIView.animate(withDuration: 2.0, delay: 1.0, options: [.repeat], animations: {
+            self.signalDotGrowView.transform = CGAffineTransform(scaleX: 50.0, y: 50.0)
+            self.signalDotGrowView.alpha = 0.0
+        }, completion: nil)
+        let timer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { (timer) in
+            print(self.advertisingFirst);
+            
+            if self.advertisingFirst == true {
+                self.startBroadcast()
+            } else {
+                self.secondStartBroadcast()
+            }
+            
+            self.advertisingFirst = !self.advertisingFirst
+        }
+    }
 
-    @IBAction func startBroadcast(_ sender: AnyObject) {
-        let when = DispatchTime.now() + 4
+    func startBroadcast() {
+        let when = DispatchTime.now()
         calibratingLabel.isHidden = false
         DispatchQueue.main.asyncAfter(deadline: when) {
             self.calibratingLabel.isHidden = true
             let latDecimalPlaces = self.latitude.truncatingRemainder(dividingBy: 1)
-            let lngDecimalPlaces = self.longitude.truncatingRemainder(dividingBy: 1)
-            var lngTrimmed = String(lngDecimalPlaces).components(separatedBy: ".")
             var latTrimmed = String(latDecimalPlaces).components(separatedBy: ".")
-            var lngString = lngTrimmed[1]
+            
             var latString = latTrimmed[1]
-            lngString.remove(at: lngString.startIndex)
+            var scndLatString = latTrimmed[1]
+            
             latString.remove(at: latString.startIndex)
-            lngString =  lngString.substring(to:lngString.index(lngString.startIndex, offsetBy: 5))
-            latString =  latString.substring(to:latString.index(latString.startIndex, offsetBy: 5))
-            let latInt = Int(latString)! / 2
-            let lngInt = Int(lngString)! / 2
-            //        latString = String(latInt)
-            //        lngString = String(lngInt)
-            print(lngString)
-            print(latString)
+            scndLatString.remove(at: scndLatString.startIndex)
+            
+            scndLatString = String(scndLatString.characters.dropFirst(4))
+            
+            
+            latString =  latString.substring(to:latString.index(latString.startIndex, offsetBy: 4))
+            scndLatString = scndLatString.substring(to: scndLatString.index(scndLatString.startIndex, offsetBy: 5))
+            
+            let latInt = Int(latString)!
+            let scndLatInt = Int(scndLatString)! / 2
             if !self.isBroadcasting {
-                if self.latBluetoothPeripheralManager.state == .poweredOn{
+                if self.bluetoothPeripheralManager.state == .poweredOn
+                {
                     let  major: CLBeaconMajorValue = UInt16(latInt)
-                    let minor: CLBeaconMinorValue = UInt16(lngInt)
+                    let minor: CLBeaconMinorValue = UInt16(scndLatInt)
                     self.beaconRegion = CLBeaconRegion(proximityUUID: self.uuid! as UUID, major: major, minor: minor, identifier: "DateId3")
                     
                     
                     self.dataDictionary = self.beaconRegion.peripheralData(withMeasuredPower: nil)
-                    self.latBluetoothPeripheralManager.startAdvertising(self.dataDictionary as? [String: Any])
+                    self.bluetoothPeripheralManager.startAdvertising(self.dataDictionary as? [String: Any])
                     
                     print("BROADCASTING...")
                     
@@ -107,10 +137,10 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
                     
                     self.startButton.titleLabel?.text = "Stop Broadcasting"
                     
-                    UIView.animate(withDuration: 2.0, delay: 1.0, options: [.repeat], animations: {
-                        self.signalDotGrowView.transform = CGAffineTransform(scaleX: 50.0, y: 50.0)
-                        self.signalDotGrowView.alpha = 0.0
-                    }, completion: nil)
+//                    UIView.animate(withDuration: 2.0, delay: 1.0, options: [.repeat], animations: {
+//                        self.signalDotGrowView.transform = CGAffineTransform(scaleX: 50.0, y: 50.0)
+//                        self.signalDotGrowView.alpha = 0.0
+//                    }, completion: nil)
                     
                 }
             } else {
@@ -119,13 +149,72 @@ class ViewController: UIViewController, CLLocationManagerDelegate, CBPeripheralM
                 
                 self.signalDotGrowView.layer.removeAllAnimations()
                 
-                self.latBluetoothPeripheralManager.stopAdvertising()
+                self.bluetoothPeripheralManager.stopAdvertising()
                 
                 self.isBroadcasting = false
                 
                 self.calibratingLabel.isHidden = true
             }
 
+        }
+    }
+    
+    func secondStartBroadcast() {
+        let when = DispatchTime.now()
+
+        DispatchQueue.main.asyncAfter(deadline: when) {
+            self.calibratingLabel.isHidden = true
+
+            let lngDecimalPlaces = self.longitude.truncatingRemainder(dividingBy: 1)
+            var lngTrimmed = String(lngDecimalPlaces).components(separatedBy: ".")
+            
+            var lngString = lngTrimmed[1]
+            var scndLngString = lngTrimmed[1]
+            
+            lngString.remove(at: lngString.startIndex)
+            scndLngString.remove(at: scndLngString.startIndex)
+            
+            scndLngString = String(scndLngString.characters.dropFirst(4))
+            
+            
+            lngString =  lngString.substring(to:lngString.index(lngString.startIndex, offsetBy: 4))
+            scndLngString = scndLngString.substring(to: scndLngString.index(scndLngString.startIndex, offsetBy: 5))
+            
+            let lngInt = Int(String("1"+lngString))!
+            let scndLngInt = Int(scndLngString)! / 2
+            //        latString = String(latInt)
+            //        lngString = String(lngInt)
+//            print(lngString)
+//            print(scndLngString)
+            if !self.secIsBroadcasting {
+                if self.secBluetoothPerhipheralManager.state == .poweredOn
+                {
+                    let  major: CLBeaconMajorValue = UInt16(lngInt)
+                    let minor: CLBeaconMinorValue = UInt16(scndLngInt)
+                    self.secBeaconRegion = CLBeaconRegion(proximityUUID: self.secondUuid! as UUID, major: major, minor: minor, identifier: "SECOND")
+                    
+                    
+                    self.secDataDictionary = self.secBeaconRegion.peripheralData(withMeasuredPower: nil)
+                    self.secBluetoothPerhipheralManager.startAdvertising(self.secDataDictionary as? [String: Any])
+                    
+                    print("BROADCASTING...")
+                    
+                    self.secIsBroadcasting = true
+                    
+                    self.startButton.titleLabel?.text = "Stop Broadcasting"
+                    
+                }
+            } else {
+                
+                self.startButton.titleLabel?.text = "Stop Broadcasting"
+                
+                self.signalDotGrowView.layer.removeAllAnimations()
+                
+                self.secBluetoothPerhipheralManager.stopAdvertising()
+                
+                self.secIsBroadcasting = false
+            }
+            
         }
     }
     

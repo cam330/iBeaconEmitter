@@ -30,7 +30,7 @@
                                     <color key="titleColor" red="1" green="1" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                 </state>
                                 <connections>
-                                    <action selector="startBroadcast:" destination="BYZ-38-t0r" eventType="touchUpInside" id="3Je-X5-Uf5"/>
+                                    <action selector="startAdvertising:" destination="BYZ-38-t0r" eventType="touchUpInside" id="Mbm-kj-nVN"/>
                                 </connections>
                             </button>
                             <view contentMode="scaleToFill" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="3vE-rS-08E">

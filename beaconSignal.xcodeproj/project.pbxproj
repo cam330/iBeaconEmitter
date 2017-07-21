@@ -308,6 +308,7 @@
 				32EB22361F1D67C70038BF49 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 
